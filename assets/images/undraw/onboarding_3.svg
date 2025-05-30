@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#8B4513"/>
+  <circle cx="200" cy="80" r="60" fill="#228B22"/>
+  <circle cx="180" cy="70" r="8" fill="#FFFFFF"/>
+  <circle cx="220" cy="70" r="8" fill="#FFFFFF"/>
+  <path d="M 170 90 Q 200 110 230 90" stroke="#FFFFFF" stroke-width="3" fill="none"/>
+  
+  <circle cx="120" cy="160" r="20" fill="#FFD700"/>
+  <rect x="100" y="170" width="40" height="30" rx="5" fill="#654321"/>
+  <circle cx="110" cy="180" r="2" fill="#FFD700"/>
+  <circle cx="130" cy="180" r="2" fill="#FFD700"/>
+  <rect x="115" y="185" width="10" height="5" rx="2" fill="#FFD700"/>
+  
+  <circle cx="280" cy="160" r="20" fill="#FFD700"/>
+  <rect x="260" y="170" width="40" height="30" rx="5" fill="#654321"/>
+  <circle cx="270" cy="180" r="2" fill="#FFD700"/>
+  <circle cx="290" cy="180" r="2" fill="#FFD700"/>
+  <rect x="275" y="185" width="10" height="5" rx="2" fill="#FFD700"/>
+  
+  <text x="200" y="240" text-anchor="middle" font-family="Arial" font-size="16" fill="#FFD700">Save the Planet</text>
+  <text x="200" y="260" text-anchor="middle" font-family="Arial" font-size="12" fill="#FFFFFF">Together we make Earth cleaner</text>
+</svg>

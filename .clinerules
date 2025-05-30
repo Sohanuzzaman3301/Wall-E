@@ -1,0 +1,271 @@
+# WALL-E Garbage Classification App - Cline Rules
+
+## Project Overview
+This Flutter application is inspired by the WALL-E robot from Pixar's movie. The app uses TensorFlow Lite (TFLite) for real-time image classification of garbage/waste items to help with recycling and waste management. Future plans include integrating an LLM for enhanced interactions and advice.
+
+## Core Functionality Requirements
+- Camera integration for capturing images of garbage/waste
+- TensorFlow Lite model integration for real-time garbage classification
+- Support for common waste categories: recyclable, organic, hazardous, general waste
+- User-friendly interface with WALL-E themed design elements
+- Offline-first capability (models should work without internet)
+- Optional: LLM integration for waste management advice and tips
+
+## Technical Stack & Dependencies
+### Required Dependencies
+- `camera`: For image capture functionality
+- `tflite`: For TensorFlow Lite model inference
+- `image`: For image processing and manipulation
+- `path_provider`: For local file storage
+- `permission_handler`: For camera permissions
+- `image_picker`: Alternative/additional image source
+- `flutter_riverpod`: For state management
+- `go_router`: For navigation and routing
+- `flutter_svg`: For Undraw SVG illustrations
+- `smooth_page_indicator`: For onboarding page indicators
+
+### Optional Dependencies (Future Features)
+- `http`: For LLM API calls
+- `shared_preferences`: For user settings
+- `sqflite`: For local data storage
+- `flutter_tts`: For WALL-E voice features
+
+## Architecture Guidelines
+### Project Structure
+```
+lib/
+├── main.dart
+├── models/
+│   ├── classification_result.dart
+│   └── waste_category.dart
+├── providers/
+│   ├── camera_provider.dart
+│   ├── classification_provider.dart
+│   └── app_state_provider.dart
+├── services/
+│   ├── camera_service.dart
+│   ├── tflite_service.dart
+│   └── llm_service.dart (future)
+├── screens/
+│   ├── onboarding/
+│   │   ├── onboarding_screen.dart
+│   │   └── welcome_screen.dart
+│   ├── home_screen.dart
+│   └── camera_screen.dart
+├── widgets/
+│   ├── waste_category_card.dart
+│   └── wall_e_animation.dart
+├── routing/
+│   └── app_router.dart
+└── utils/
+    ├── constants.dart
+    └── image_utils.dart
+```
+
+### Design Patterns
+- Use Riverpod for state management (with providers, notifiers, and consumers)
+- Use GoRouter for declarative navigation and routing
+- Implement Repository pattern for data layer
+- Use Dependency Injection for services
+- Follow Clean Architecture principles
+
+## Code Style & Standards
+### Flutter/Dart Conventions
+- Use `const` constructors wherever possible
+- Prefer `final` over `var` for immutable variables
+- Follow dart_style formatting (flutter format)
+- Use meaningful widget names (avoid generic names like MyWidget)
+- Implement proper error handling with try-catch blocks
+
+### WALL-E Theme Implementation
+- Primary colors: Earth tones (browns, yellows, greens)
+- Use robot-like, futuristic UI elements
+- Include WALL-E sound effects and animations where appropriate
+- Friendly, encouraging user messaging
+- Consider accessibility for all users
+
+## TensorFlow Lite Integration Rules
+### Model Requirements
+- Models must be optimized for mobile (< 50MB)
+- Support quantized models for better performance
+- Include proper preprocessing for input images
+- Handle different image sizes and formats
+
+### Classification Categories
+```dart
+enum WasteCategory {
+  recyclable,    // Plastic bottles, cans, paper
+  organic,       // Food waste, biodegradable items
+  hazardous,     // Batteries, electronics, chemicals
+  general        // Non-recyclable general waste
+}
+```
+
+### Performance Standards
+- Image classification should complete within 2 seconds
+- UI should remain responsive during inference
+- Implement proper loading states and error handling
+- Cache models locally after first download
+
+## File Organization Rules
+### Assets Structure
+```
+assets/
+├── models/
+│   └── garbage_classifier.tflite
+├── images/
+│   ├── wall_e_icon.png
+│   ├── category_icons/
+│   └── undraw/
+│       ├── onboarding_1.svg
+│       ├── onboarding_2.svg
+│       └── onboarding_3.svg
+└── sounds/
+    └── wall_e_sounds.mp3
+```
+
+### Model Files
+- Store .tflite models in assets/models/
+- Include model metadata and labels
+- Version control model files appropriately
+- Document model performance metrics
+
+## Testing Requirements
+### Unit Tests
+- Test all service classes (TfliteService, CameraService)
+- Test model inference accuracy
+- Test image preprocessing functions
+- Mock external dependencies properly
+
+### Widget Tests
+- Test camera screen functionality
+- Test error states and loading states
+- Verify accessibility features
+
+### Integration Tests
+- End-to-end camera to classification flow
+- Test offline functionality
+- Performance testing on target devices
+
+## Error Handling Standards
+### Camera Errors
+- Handle permission denied gracefully
+- Provide clear error messages for camera failures
+- Offer alternative image input methods
+
+### Model Inference Errors
+- Fallback for model loading failures
+- Handle unsupported image formats
+- Provide confidence thresholds for classifications
+
+## Platform-Specific Considerations
+### Android
+- Minimum SDK: 21 (Android 5.0)
+- Target latest stable Android version
+- Handle Android-specific camera permissions
+
+### iOS
+- Minimum deployment target: iOS 12.0
+- Handle iOS camera permissions properly
+- Test on various iPhone screen sizes
+
+## LLM Integration Guidelines (Future Feature)
+### API Integration
+- Use environment variables for API keys
+- Implement proper error handling for API calls
+- Add offline fallback for core functionality
+- Consider rate limiting and cost management
+
+### WALL-E Personality
+- Implement friendly, helpful responses
+- Use simple, encouraging language
+- Provide actionable waste management tips
+- Maintain character consistency with movie
+
+## Security & Privacy
+### Data Handling
+- Process images locally when possible
+- Don't store personal images without consent
+- Implement proper data encryption for sensitive info
+- Follow GDPR guidelines for data collection
+
+### API Security
+- Never hardcode API keys in source code
+- Use secure storage for sensitive credentials
+- Implement proper authentication flows
+
+## Performance Requirements
+### Image Processing
+- Optimize image size before inference (224x224 or 299x299)
+- Use efficient image compression
+- Implement proper memory management
+- Consider batch processing for multiple images
+
+### UI Performance
+- Maintain 60fps during animations
+- Use efficient list widgets for large datasets
+- Implement proper asset loading strategies
+- Optimize for lower-end devices
+
+## Accessibility Standards
+- Implement semantic labels for screen readers
+- Ensure sufficient color contrast ratios
+- Provide haptic feedback for important actions
+- Support dynamic text sizing
+- Include voice guidance for camera operations
+
+## Development Workflow
+### Code Review Standards
+- All ML model integrations must be reviewed
+- Performance impact assessment required
+- Accessibility compliance verification
+- Security review for data handling
+
+### Version Control
+- Use conventional commits for commit messages
+- Tag releases with semantic versioning
+- Include model version tracking
+- Document breaking changes clearly
+
+## Deployment Guidelines
+### App Store Requirements
+- Include proper app descriptions emphasizing environmental impact
+- Provide screenshots showing WALL-E theme
+- Document camera usage clearly
+- Include privacy policy for data handling
+
+### Model Updates
+- Implement over-the-air model updates
+- Version models appropriately
+- Test model compatibility before deployment
+- Provide fallback to previous model versions
+
+## Environment Variables
+```
+# API Keys (for future LLM integration)
+OPENAI_API_KEY=your_key_here
+GEMINI_API_KEY=your_key_here
+
+# Model Configuration
+MODEL_VERSION=v1.0
+CONFIDENCE_THRESHOLD=0.7
+```
+
+## Special Instructions for AI Assistants
+1. Always prioritize user experience and accessibility
+2. Maintain WALL-E's friendly, helpful personality in all interactions
+3. Focus on environmental education and positive reinforcement
+4. Ensure all camera operations include proper permission handling
+5. Test TensorFlow Lite integration thoroughly on actual devices
+6. Keep the app educational and engaging for all age groups
+7. When implementing LLM features, ensure they add value without compromising core functionality
+8. Always consider offline usage scenarios
+9. Implement proper error recovery mechanisms
+10. Document any model training or fine-tuning processes clearly
+
+## Known Limitations & Considerations
+- TensorFlow Lite models may have accuracy limitations on edge cases
+- Camera quality varies significantly across devices
+- Lighting conditions affect classification accuracy
+- Model size vs. accuracy trade-offs need careful consideration
+- LLM integration requires careful prompt engineering for WALL-E personality
