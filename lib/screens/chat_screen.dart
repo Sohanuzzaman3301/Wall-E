@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:chat_bot_llm/chat_bot_llm.dart';
 
 class WallEChatScreen extends StatefulWidget {
   const WallEChatScreen({super.key});
