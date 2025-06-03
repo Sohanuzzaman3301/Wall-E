@@ -10,7 +10,9 @@ class ChatEmptyState extends ConsumerWidget {
   void _startChat(BuildContext context, WidgetRef ref) {
     // Send a welcome message to start the chat
     ref.read(chat_provider.chatProvider.notifier).sendMessage(
-      "What's one small change you could make today to help reduce waste in your daily life?"
+      "Beep boop! I'm WALL-E, and I'm here to teach you about proper waste disposal! 🌍♻️\n\n"
+      "I can help you identify different types of waste and show you how to dispose of them correctly. "
+      "Just show me an item or ask me about anything you're not sure how to recycle! 🤖✨"
     );
   }
 
@@ -25,42 +27,35 @@ class ChatEmptyState extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Smaller Lottie animation
-              SizedBox(
+              // WALL-E animation
+              Container(
                 width: 200,
                 height: 200,
                 child: Lottie.asset(
-                  'assets/animations/robot_wave.json',
+                  'assets/animations/wall_e_wave.json',
                   fit: BoxFit.contain,
                   animate: true,
                   repeat: true,
                 ),
               ).animate()
-                .fadeIn(duration: 600.ms)
+                .fadeIn(duration: 800.ms)
                 .scale(delay: 200.ms),
               
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               
-              // More compact welcome card
+              // Welcome message
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      theme.colorScheme.surface,
-                      theme.colorScheme.surface.withOpacity(0.95),
-                    ],
-                  ),
+                  color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: theme.colorScheme.outline.withOpacity(0.1),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: theme.shadowColor.withOpacity(0.05),
-                      blurRadius: 12,
+                      color: theme.shadowColor.withOpacity(0.1),
+                      blurRadius: 20,
                       offset: const Offset(0, 4),
                     ),
                   ],
@@ -77,7 +72,7 @@ class ChatEmptyState extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Your AI waste management assistant. I can help you identify and sort your waste!',
+                      'Your AI waste management teacher! I can help you learn how to properly sort and dispose of different types of waste!',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,

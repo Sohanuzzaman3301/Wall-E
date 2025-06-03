@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:wall_e/providers/theme_provider.dart';
 import 'package:wall_e/router/routes.dart';
+import 'package:wall_e/services/tensorflow_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,10 +15,15 @@ void main() async {
   
   final prefs = await SharedPreferences.getInstance();
   
+  // Initialize TensorFlow service
+  final tensorflowService = TensorFlowService();
+  await tensorflowService.initialize();
+  
   runApp(
     ProviderScope(
       overrides: [
         themeProvider.overrideWith((ref) => ThemeNotifier(prefs)),
+        tensorflowProvider.overrideWith((ref) => TensorFlowNotifier(tensorflowService)),
       ],
       child: const WallEApp(),
     ),

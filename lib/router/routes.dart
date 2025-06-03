@@ -5,16 +5,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../pages/camera_page.dart';
 import '../pages/chat_page.dart';
 import '../pages/settings_page.dart';
+import '../pages/result_page.dart';
+import '../pages/about_page.dart';
 import '../widgets/onboarding/onboarding_screen.dart';
+import '../providers/theme_provider.dart';
+import '../services/tensorflow_service.dart';
 
 // Root navigator key for the app
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Provider for the app's router configuration
 final routerProvider = Provider<GoRouter>((ref) {
+  final themeState = ref.watch(themeProvider);
+  
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/chat',
     routes: [
       GoRoute(
         path: '/',
@@ -57,6 +63,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings',
         name: 'settings',
         builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: '/about',
+        name: 'about',
+        builder: (context, state) => const AboutPage(),
+      ),
+      GoRoute(
+        path: '/result',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return ResultPage(
+            imagePath: extra['imagePath'] as String,
+            prediction: extra['prediction'] as ObjectDetection?,
+          );
+        },
       ),
     ],
   );

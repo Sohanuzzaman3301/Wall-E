@@ -93,18 +93,10 @@ class ModelStateNotifier extends StateNotifier<ModelState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final success = await _tensorFlowService.loadModel();
-      if (success) {
-        state = state.copyWith(isLoaded: true, isLoading: false);
-      } else {
-        state = state.copyWith(
-          isLoaded: false,
-          isLoading: false,
-          error: 'Failed to load TensorFlow model',
-        );
-      }
+      await _tensorFlowService.initialize();
+      state = state.copyWith(isLoaded: true, isLoading: false);
     } catch (e) {
-      state = state.copyWith(
+        state = state.copyWith(
         isLoaded: false,
         isLoading: false,
         error: 'Error loading model: $e',

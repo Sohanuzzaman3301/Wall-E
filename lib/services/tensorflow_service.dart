@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Data models
 class GarbagePrediction {
@@ -48,6 +49,21 @@ class DisposalInfo {
   });
 }
 
+class ObjectDetection {
+  final String label;
+  final double confidence;
+  final double x1, y1, x2, y2;
+
+  ObjectDetection({
+    required this.label,
+    required this.confidence,
+    required this.x1,
+    required this.y1,
+    required this.x2,
+    required this.y2,
+  });
+}
+
 class TensorFlowService {
   static const List<String> _garbageClasses = [
     'battery',
@@ -64,64 +80,27 @@ class TensorFlowService {
     'white-glass'
   ];
 
-  late Interpreter _interpreter;
-  bool _isModelLoaded = false;
+  Interpreter? _interpreter;
+  bool _isInitialized = false;
 
   // Singleton pattern
   static final TensorFlowService _instance = TensorFlowService._internal();
   factory TensorFlowService() => _instance;
   TensorFlowService._internal();
 
-  /// Initialize the TensorFlow Lite model
-  Future<bool> loadModel() async {
-    print('🔄 Starting model loading process...');
-    
-    // List of models to try (in order of preference)
-    final List<String> modelPaths = [
-      'assets/models/garbage_classifier.tflite',
-      'assets/models/garbage_classifier_quantized.tflite',
-    ];
-    
-    for (String modelPath in modelPaths) {
-      try {
-        print('🔍 Attempting to load: $modelPath');
-        
-        // Create interpreter with options for better compatibility
-        final options = InterpreterOptions();
-        options.threads = 1; // Use single thread for stability
-        
-        _interpreter = await Interpreter.fromAsset(modelPath, options: options);
-        
-        // Verify model is working by checking tensor info
-        final inputTensors = _interpreter.getInputTensors();
-        final outputTensors = _interpreter.getOutputTensors();
-        
-        print('✅ Successfully loaded: $modelPath');
-        print('📊 Input tensors: ${inputTensors.length}');
-        print('📊 Output tensors: ${outputTensors.length}');
-        
-        if (inputTensors.isNotEmpty) {
-          print('📊 Input shape: ${inputTensors[0].shape}');
-          print('📊 Input type: ${inputTensors[0].type}');
-        }
-        
-        if (outputTensors.isNotEmpty) {
-          print('📊 Output shape: ${outputTensors[0].shape}');
-          print('📊 Output type: ${outputTensors[0].type}');
-        }
-        
-        _isModelLoaded = true;
-        return true;
-        
-      } catch (e) {
-        print('❌ Failed to load $modelPath: $e');
-        continue; // Try next model
-      }
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    try {
+      final options = InterpreterOptions()..threads = 1;
+      _interpreter = await Interpreter.fromAsset(
+        'assets/models/garbage_classifier.tflite',
+        options: options,
+      );
+      _isInitialized = true;
+    } catch (e) {
+      throw Exception('Failed to initialize TensorFlow: $e');
     }
-    
-    print('❌ All model loading attempts failed');
-    _isModelLoaded = false;
-    return false;
   }
 
   /// Preprocess image according to training notebook - model expects [0, 255] range
@@ -176,69 +155,66 @@ class TensorFlowService {
     return inputData;
   }
 
+  /// EfficientNet preprocessing function that matches training code exactly
+  List<List<List<List<double>>>> _preprocessImageForEfficientNet(File imageFile) {
+    final bytes = imageFile.readAsBytesSync();
+    img.Image? decodedImage = img.decodeImage(bytes);
+    
+    if (decodedImage == null) {
+      throw Exception('Failed to decode image');
+    }
+    
+    // Resize to 224x224 as per EfficientNetB0
+    img.Image resized = img.copyResize(decodedImage, width: 224, height: 224);
+    
+    // Create 4D tensor [1, 224, 224, 3] with [0, 255] range
+    return List.generate(1, (_) => 
+      List.generate(224, (y) => 
+        List.generate(224, (x) {
+          final pixel = resized.getPixel(x, y);
+          return [
+            pixel.r.toDouble(),  // [0, 255] range
+            pixel.g.toDouble(),
+            pixel.b.toDouble(),
+          ];
+        })
+      )
+    );
+  }
+
   /// Classify garbage from image file - following FLUTTER_INFERENCE.md pattern
   Future<GarbagePrediction> classify(File imageFile) async {
-    if (!_isModelLoaded) {
-      throw Exception('Model not loaded. Call loadModel() first.');
+    if (!_isInitialized) {
+      await initialize();
     }
 
     try {
       print('🔍 Starting classification for: ${imageFile.path}');
       
-      // Try both preprocessing approaches to see which works better
-      bool useFlat = true; // Start with Float32List approach
-      
-      var input;
-      if (useFlat) {
-        input = _preprocessImageFlat(imageFile);
-        print('🔍 Using Float32List input, length: ${input.length}');
-        print('🔍 Input data range: ${input.reduce((double a, double b) => a < b ? a : b)} to ${input.reduce((double a, double b) => a > b ? a : b)}');
-      } else {
-        input = _preprocessImage(imageFile);
-        print('🔍 Using nested list input, shape: ${input.length}x${input[0].length}x${input[0][0].length}x${input[0][0][0].length}');
-      }
+      // Get input tensor
+      final inputBuffer = _preprocessImageForEfficientNet(imageFile);
+      final input = [inputBuffer];
       
       // Prepare output tensor for 12 classes 
       var output = List.generate(1, (_) => List.filled(12, 0.0));
       
-      // Run inference
+      // Run inference - model output is already probabilities
       print('🔍 Running inference...');
-      try {
-        _interpreter.run(input, output);
-      } catch (e) {
-        if (useFlat) {
-          print('❌ Float32List failed: $e');
-          print('🔄 Trying nested list approach...');
-          input = _preprocessImage(imageFile);
-          _interpreter.run(input, output);
-        } else {
-          print('❌ Nested list failed: $e');
-          print('🔄 Trying Float32List approach...');
-          input = _preprocessImageFlat(imageFile);
-          _interpreter.run(input, output);
-        }
-      }
+      _interpreter!.run(input, output);
       
-      // Get probabilities
+      // Get probabilities directly from model output
       List<double> probabilities = output[0].cast<double>();
-      print('🔍 Raw output: $probabilities');
-      
-      // Check if probabilities need softmax (like FLUTTER_INFERENCE.md approach)
-      double sum = probabilities.reduce((a, b) => a + b);
-      print('🔍 Probability sum: $sum');
-      
-      if (sum < 0.99 || sum > 1.01) {
-        print('🔍 Applying softmax normalization...');
-        probabilities = _applySoftmax(probabilities);
+      print('🔍 Model output probabilities:');
+      for (int i = 0; i < _garbageClasses.length; i++) {
+        print('${_garbageClasses[i]}: ${(probabilities[i] * 100).toStringAsFixed(2)}%');
       }
       
-      // Find max probability and index (like FLUTTER_INFERENCE.md)
+      // Find max probability and index
       final maxProbability = probabilities.reduce((a, b) => a > b ? a : b);
       final maxIndex = probabilities.indexOf(maxProbability);
-      
       String predictedClass = _garbageClasses[maxIndex];
       
-      print('🔍 Prediction: $predictedClass ($maxProbability)');
+      print('🔍 Prediction: $predictedClass (${(maxProbability * 100).toStringAsFixed(2)}%)');
       
       // Create all predictions
       List<ClassPrediction> allPredictions = [];
@@ -269,21 +245,6 @@ class TensorFlowService {
       print('❌ Classification error: $e');
       rethrow;
     }
-  }
-
-  /// Apply softmax to convert logits to probabilities
-  List<double> _applySoftmax(List<double> logits) {
-    // Find max for numerical stability
-    double maxLogit = logits.reduce((a, b) => a > b ? a : b);
-    
-    // Compute exp(x - max) for each element
-    List<double> expValues = logits.map((x) => math.exp(x - maxLogit)).toList();
-    
-    // Compute sum of exp values
-    double sumExp = expValues.reduce((a, b) => a + b);
-    
-    // Normalize to get probabilities
-    return expValues.map((x) => x / sumExp).toList();
   }
 
   /// Get disposal information for a garbage class
@@ -422,13 +383,100 @@ class TensorFlowService {
   }
 
   /// Get whether the model is loaded
-  bool get isModelLoaded => _isModelLoaded;
+  bool get isModelLoaded => _isInitialized;
 
   /// Dispose of the TensorFlow interpreter
   void dispose() {
-    if (_isModelLoaded) {
-      _interpreter.close();
-      _isModelLoaded = false;
+    if (_isInitialized) {
+      _interpreter!.close();
+      _isInitialized = false;
     }
+  }
+
+  Future<List<ObjectDetection>> detectObjects(String imagePath) async {
+    if (!_isInitialized) {
+      await initialize();
+    }
+
+    try {
+      final imageFile = File(imagePath);
+      
+      // Get input tensor in correct 4D shape [1, 224, 224, 3]
+      final input = _preprocessImageForEfficientNet(imageFile);
+      
+      // Create output tensor for 12 classes with correct shape [1, 12]
+      var output = List.generate(1, (_) => List.filled(12, 0.0));
+
+      // Run inference - model output is already probabilities
+      _interpreter!.run(input, output);
+
+      // Get probabilities directly from model output
+      List<double> probabilities = output[0].cast<double>();
+      
+      // Debug logging
+      print('\n🔍 Model output probabilities:');
+      for (int i = 0; i < _garbageClasses.length; i++) {
+        print('${_garbageClasses[i]}: ${(probabilities[i] * 100).toStringAsFixed(2)}%');
+      }
+      
+      // Find the class with highest probability
+      final maxIndex = probabilities.indexOf(probabilities.reduce((a, b) => a > b ? a : b));
+      final maxProbability = probabilities[maxIndex];
+      final predictedClass = _garbageClasses[maxIndex];
+      
+      print('\n🔍 Prediction: $predictedClass (${(maxProbability * 100).toStringAsFixed(2)}%)');
+
+      // Return a single detection with the predicted class
+      return [
+        ObjectDetection(
+          label: predictedClass,
+          confidence: maxProbability,
+          x1: 0.0, // No bounding box for classification
+          y1: 0.0,
+          x2: 1.0,
+          y2: 1.0,
+        ),
+      ];
+
+    } catch (e) {
+      print('Error during object detection: $e');
+      throw Exception('Error during object detection: $e');
+    }
+  }
+}
+
+final tensorflowProvider = StateNotifierProvider<TensorFlowNotifier, AsyncValue<TensorFlowService>>((ref) {
+  return TensorFlowNotifier();
+});
+
+class TensorFlowNotifier extends StateNotifier<AsyncValue<TensorFlowService>> {
+  TensorFlowNotifier([TensorFlowService? service]) : super(service != null ? AsyncValue.data(service) : const AsyncValue.loading()) {
+    if (service == null) {
+      _initialize();
+    }
+  }
+
+  Future<void> _initialize() async {
+    try {
+      final service = TensorFlowService();
+      await service.initialize();
+      state = AsyncValue.data(service);
+    } catch (e, stack) {
+      state = AsyncValue.error(e, stack);
+    }
+  }
+
+  Future<List<ObjectDetection>> detectObjects(String imagePath) async {
+    final service = state.value;
+    if (service == null) {
+      throw Exception('TensorFlow service not initialized');
+    }
+    return service.detectObjects(imagePath);
+  }
+
+  @override
+  void dispose() {
+    state.value?.dispose();
+    super.dispose();
   }
 }
