@@ -6,12 +6,15 @@ import 'package:ms_undraw/ms_undraw.dart';
 import 'package:wall_e/providers/chat_provider.dart' as chat_provider;
 import 'package:wall_e/providers/connectivity_provider.dart';
 import 'package:wall_e/providers/theme_provider.dart';
+import 'package:wall_e/services/tensorflow_service.dart';
 import 'package:wall_e/utils/undraw_illustrations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:developer' as developer;
 import 'package:wall_e/widgets/chat/chat_widgets.dart';
+import 'package:wall_e/pages/result_page.dart';
 import 'package:flutter/services.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
@@ -32,6 +35,9 @@ class _ChatPageState extends ConsumerState<ChatPage> with SingleTickerProviderSt
   final _textController = TextEditingController();
   bool _isKeyboardVisible = false;
   final FocusNode _focusNode = FocusNode();
+  String? _capturedImagePath;
+  ObjectDetection? _currentPrediction;
+  final _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -495,6 +501,57 @@ class _ChatPageState extends ConsumerState<ChatPage> with SingleTickerProviderSt
     _textController.clear();
   }
 
+  Future<void> _handleImageCapture() async {
+    try {
+      final image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+        imageQuality: 80,
+      );
+
+      if (image == null) return;
+
+      // Get predictions from TensorFlow
+      final tensorflowService = ref.read(tensorflowProvider).value;
+      if (tensorflowService == null) {
+        throw Exception('TensorFlow service not initialized');
+      }
+      final predictions = await tensorflowService.detectObjects(image.path);
+      
+      if (!mounted) return;
+
+      // Navigate to result page
+      context.push('/result', extra: {
+        'imagePath': image.path,
+        'prediction': predictions.first,
+      });
+
+      // Send a message to chat
+      final message = _formatPredictions(predictions);
+      ref.read(chat_provider.chatProvider.notifier).sendMessage(message);
+
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error processing image: ${e.toString()}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  String _formatPredictions(List<ObjectDetection> predictions) {
+    if (predictions.isEmpty) {
+      return "Beep boop! I couldn't detect any objects in this image. Try taking a clearer picture so I can teach you how to dispose of it properly! 🤖📸";
+    }
+
+    final prediction = predictions.first;
+    final confidence = (prediction.confidence * 100).toStringAsFixed(1);
+    
+    return "Wooooah! I see a ${prediction.label} with ${confidence}% confidence! Let me teach you how to dispose of this properly! Ask me 'How do I dispose of ${prediction.label}?' and I'll show you the right way! 🌍♻️";
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatState = ref.watch(chat_provider.chatProvider);
@@ -546,6 +603,14 @@ class _ChatPageState extends ConsumerState<ChatPage> with SingleTickerProviderSt
         actions: [
           IconButton(
             icon: Icon(
+              Icons.camera_alt_rounded,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            onPressed: _handleImageCapture,
+            tooltip: 'Take a picture for waste classification',
+          ),
+          IconButton(
+            icon: Icon(
               Icons.settings_outlined,
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -561,6 +626,10 @@ class _ChatPageState extends ConsumerState<ChatPage> with SingleTickerProviderSt
             onPressed: () {
               _messageIds.clear();
               ref.read(chat_provider.chatProvider.notifier).clearChat();
+              setState(() {
+                _capturedImagePath = null;
+                _currentPrediction = null;
+              });
             },
           ),
         ],
